@@ -11,9 +11,9 @@ class MainShell extends StatelessWidget {
   static const _destinations = [
     _Destination('Dashboard', Icons.space_dashboard_outlined),
     _Destination('Transactions', Icons.receipt_long_outlined),
-    _Destination('Reports', Icons.bar_chart_rounded),
+    _Destination('Budgets', Icons.savings_outlined),
     _Destination('Goals', Icons.track_changes_rounded),
-    _Destination('More', Icons.more_horiz_rounded),
+    _Destination('Reports', Icons.bar_chart_rounded),
   ];
 
   @override

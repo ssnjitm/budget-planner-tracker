@@ -119,5 +119,46 @@ const List<Migration> migrations = [
     'CREATE INDEX idx_tx_account ON ${Tables.transactions} (${Cols.accountId})',
     'CREATE INDEX idx_budget_period ON ${Tables.budgets} (${Cols.periodStart})',
     'CREATE INDEX idx_sync_due ON ${Tables.syncQueue} (${Cols.nextAttemptAt})',
+    ..._seedStatements,
   ]),
+];
+
+const String _seedTimestamp = '2026-01-01T00:00:00.000Z';
+
+const List<String> _seedStatements = [
+  '''
+  INSERT OR IGNORE INTO ${Tables.accounts}
+    (${Cols.id}, ${Cols.name}, ${Cols.openingBalanceMinor}, ${Cols.isActive},
+     ${Cols.createdAt}, ${Cols.updatedAt}, ${Cols.syncStatus}, ${Cols.serverRevision})
+  VALUES ('11111111-1111-4111-8111-111111111111', 'Cash', 0, 1,
+          '$_seedTimestamp', '$_seedTimestamp', 'synced', 0)
+  ''',
+  '''
+  INSERT OR IGNORE INTO ${Tables.categories}
+    (${Cols.id}, ${Cols.name}, ${Cols.type}, ${Cols.iconKey},
+     ${Cols.createdAt}, ${Cols.updatedAt}, ${Cols.syncStatus}, ${Cols.serverRevision})
+  VALUES
+    ('22222222-2222-4222-8222-000000000001', 'Food', 'expense', 'food',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('22222222-2222-4222-8222-000000000002', 'Transport', 'expense', 'transport',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('22222222-2222-4222-8222-000000000003', 'Shopping', 'expense', 'shopping',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('22222222-2222-4222-8222-000000000004', 'Bills', 'expense', 'bills',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('22222222-2222-4222-8222-000000000005', 'Health', 'expense', 'health',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('22222222-2222-4222-8222-000000000006', 'Entertainment', 'expense', 'entertainment',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('22222222-2222-4222-8222-000000000007', 'Other', 'expense', 'other',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000001', 'Salary', 'income', 'salary',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000002', 'Business', 'income', 'business',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000003', 'Gifts', 'income', 'gifts',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000004', 'Other income', 'income', 'other_income',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0)
+  ''',
 ];

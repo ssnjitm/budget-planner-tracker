@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../core/common/features/home/main_shell.dart';
-import '../core/common/widgets/feature_placeholder_page.dart';
+import '../features/budgets/presentation/pages/add_edit_budget_page.dart';
+import '../features/budgets/presentation/pages/budgets_page.dart';
+import '../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../features/reports/presentation/pages/reports_page.dart';
+import '../features/savings_goals/presentation/pages/add_edit_goal_page.dart';
+import '../features/savings_goals/presentation/pages/goal_detail_page.dart';
+import '../features/savings_goals/presentation/pages/savings_goals_page.dart';
+import '../features/settings/presentation/pages/settings_page.dart';
+import '../features/transactions/presentation/pages/accounts_page.dart';
+import '../features/transactions/presentation/pages/add_edit_transaction_page.dart';
+import '../features/transactions/presentation/pages/categories_page.dart';
+import '../features/transactions/presentation/pages/transactions_page.dart';
 import 'route_names.dart';
 
 abstract final class AppRouter {
   static final router = GoRouter(
-    initialLocation: RouteNames.dashboard,
+    initialLocation: RouteNames.home,
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -18,7 +28,7 @@ abstract final class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: RouteNames.dashboard,
+                path: RouteNames.home,
                 builder: (context, state) => const DashboardPage(),
               ),
             ],
@@ -27,13 +37,63 @@ abstract final class AppRouter {
             routes: [
               GoRoute(
                 path: RouteNames.transactions,
-                builder: (context, state) =>
-                    const FeaturePlaceholderPage(title: 'Transactions'),
+                builder: (context, state) => const TransactionsPage(),
                 routes: [
                   GoRoute(
                     path: 'add',
+                    builder: (context, state) => const AddEditTransactionPage(),
+                  ),
+                  GoRoute(
+                    path: ':id/edit',
+                    builder: (context, state) => AddEditTransactionPage(
+                      transactionId: state.pathParameters['id'],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.budgets,
+                builder: (context, state) => const BudgetsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'add',
+                    builder: (context, state) => const AddEditBudgetPage(),
+                  ),
+                  GoRoute(
+                    path: ':id/edit',
                     builder: (context, state) =>
-                        const FeaturePlaceholderPage(title: 'Add transaction'),
+                        AddEditBudgetPage(budgetId: state.pathParameters['id']),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.savings,
+                builder: (context, state) => const SavingsGoalsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'add',
+                    builder: (context, state) => const AddEditGoalPage(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => GoalDetailPage(
+                      goalId: state.pathParameters['id'] ?? '',
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        builder: (context, state) =>
+                            AddEditGoalPage(goalId: state.pathParameters['id']),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -43,33 +103,29 @@ abstract final class AppRouter {
             routes: [
               GoRoute(
                 path: RouteNames.reports,
-                builder: (context, state) =>
-                    const FeaturePlaceholderPage(title: 'Reports'),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: RouteNames.goals,
-                builder: (context, state) =>
-                    const FeaturePlaceholderPage(title: 'Savings goals'),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: RouteNames.more,
-                builder: (context, state) =>
-                    const FeaturePlaceholderPage(title: 'More'),
+                builder: (context, state) => const ReportsPage(),
               ),
             ],
           ),
         ],
       ),
+      GoRoute(
+        path: RouteNames.settings,
+        builder: (context, state) => const SettingsPage(),
+        routes: [
+          GoRoute(
+            path: 'accounts',
+            builder: (context, state) => const AccountsPage(),
+          ),
+          GoRoute(
+            path: 'categories',
+            builder: (context, state) => const CategoriesPage(),
+          ),
+        ],
+      ),
     ],
     errorBuilder: (context, state) => Scaffold(
+      appBar: AppBar(title: const Text('Not found')),
       body: Center(child: Text('Page not found: ${state.uri.path}')),
     ),
   );
