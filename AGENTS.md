@@ -40,14 +40,14 @@ folder layout, feature flows, and how to extend the app safely.
 
 | Feature | Stack | Status |
 |---------|-------|--------|
-| `auth` | Supabase Auth — full CLEAN | Not started |
-| `dashboard` | Local (SQLite reads + domain calculations) — full CLEAN | Not started |
-| `transactions` | SQLite + sync queue — full CLEAN | Not started |
-| `budgets` | SQLite + sync queue — full CLEAN | Not started |
-| `savings_goals` | SQLite + sync queue — full CLEAN | Not started |
-| `reports` | SQLite reads + `fl_chart` — full CLEAN | Not started |
-| `settings` | Local + Supabase profile — full CLEAN | Not started |
-| Main shell (bottom nav + FAB) | Presentation-only (`app/router/` + `core/widgets/`) | Not started |
+| `auth` | Supabase Auth — email/password + Google, full CLEAN | Implemented (MVP) |
+| `dashboard` | Local (SQLite reads + domain calculations) — full CLEAN | Implemented (local) |
+| `transactions` | SQLite + sync queue — full CLEAN | Implemented (local) |
+| `budgets` | SQLite + sync queue — full CLEAN | Implemented (local) |
+| `savings_goals` | SQLite + sync queue — full CLEAN | Implemented (local) |
+| `reports` | SQLite reads + `fl_chart` — full CLEAN | Implemented (local) |
+| `settings` | Local + optional Supabase profile — full CLEAN | Implemented (local) |
+| Main shell (bottom nav + FAB) | Presentation-only (`app/router/` + `core/widgets/`) | Implemented |
 
 > Cloud sync is **not optional to design for**, but **is** allowed to ship
 > behind a feature flag until Phase 4. Every table, ID, and timestamp must be
@@ -173,8 +173,9 @@ assets:
 # Get deps
 flutter pub get
 
-# Run the app
+# Run the app (local-only mode when .env.app is omitted)
 flutter run
+flutter run --dart-define-from-file=.env.app   # Supabase-enabled
 
 # Code generation (after editing models / freezed classes / @riverpod providers)
 dart run build_runner build --delete-conflicting-outputs
@@ -958,9 +959,14 @@ StatefulShellRoute.indexedStack(
 ```
 
 ### 8.2 Auth redirect logic (app_router.dart)
-A custom _AuthRedirect extends ChangeNotifier is the refreshListenable.
-app.dart calls AppRouter.redirectNotifier.update(authStatus) via
-ref.listen(authProvider, ...).
+`AuthGate` (a `ChangeNotifier` on `AppRouter.authGate`) is the
+`refreshListenable`. `app.dart` watches `authProvider` and schedules
+`AppRouter.authGate.update(authStatus)` after the frame; `_redirect` in
+`app_router.dart` applies the matrix below. Redirects are skipped entirely
+when `SupabaseBootstrap.isReady == false`, so local-only mode always reaches
+`/home`. Google OAuth returns through the
+`io.supabase.pocketbudget://login-callback` deep link, and the resulting
+session is admitted via `onAuthStateChange`.
 
 Redirect matrix:
 
@@ -1309,37 +1315,62 @@ read from core/constants/app_constants.dart.
 ### 13.1 Project + credentials
 Create a project at https://database.new.
 
-From the Dashboard copy the Project URL and the publishable/anon
-key into AppConstants (or a .env read at bootstrap).
+Put the Project URL and publishable key in the gitignored `.env.app`:
+
+```text
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_...
+```
+
+Keep CLI-only secrets (the DB password) in a separate gitignored `.env`:
+
+```text
+SUPABASE_DB_PASSWORD=...   # CLI/migrations only; never passed to Flutter
+```
+
+The app reads `SUPABASE_URL` / `SUPABASE_ANON_KEY` through
+`String.fromEnvironment` in `core/constants/app_constants.dart`. Run with:
+
+```bash
+flutter run --dart-define-from-file=.env.app
+```
+
+Do **not** add `flutter_dotenv` or list either env file as an asset; that would
+bundle secrets into the app. Do not pass `.env` (with the DB password) to
+`--dart-define-from-file`. Without the app defines, the app starts in
+local-only mode.
 
 Never put the service_role key in the app — it bypasses RLS.
 
-Configure URL Configuration -> add the mobile deep link, e.g.
-io.supabase.pocketbudget://login-callback. Register the same scheme in
-the Android manifest / iOS URL types.
+Configure URL Configuration -> add the mobile deep link:
+`io.supabase.pocketbudget://login-callback`. Register the same scheme in the
+Android manifest / iOS URL types (done).
 
-Initialize once in bootstrap.dart:
-
-```dart
-await Supabase.initialize(
-  url: AppConstants.supabaseUrl,
-  anonKey: AppConstants.supabaseAnonKey,
-);
-```
+`main.dart` calls `SupabaseBootstrap.initialize()`; it uses
+`Supabase.initialize(url:, publishableKey:)` and leaves
+`SupabaseBootstrap.isReady == false` (local mode) when env vars are missing or
+initialization fails.
 
 ### 13.2 Auth
-MVP method: Email + Password.
+MVP methods: Email + Password and Google.
 
-AuthRepositoryImpl wraps supabase.auth.signInWithPassword,
-signUp, signOut, and onAuthStateChange.
-
-On success, AuthRepositoryImpl persists the user id to
-storageProvider (secure storage) so offline launches can restore the
-session.
+AuthRepositoryImpl wraps supabase.auth.signInWithPassword, signUp,
+signInWithOAuth, signOut, and onAuthStateChange. It maps Supabase exceptions
+to `Failure`. `AuthNotifier` is the only place that persists
+`AppConstants.userIdKey` (secure storage), because it also clears local user
+data when a different account signs in.
 
 authProvider (a StateNotifier<AuthState>) is the single source of
 truth for authenticated | unauthenticated | unknown and feeds the
 GoRouter refreshListenable (see section 8.2).
+
+Google sign-in opens the external browser; the result arrives through
+`onAuthStateChange` after the deep link returns. Enable the Google provider in
+the Supabase dashboard and allowlist the callback URL above.
+
+Email confirmation: if enabled, sign-up returns no session and the UI asks the
+user to confirm their email before signing in. Password reset is not in the
+MVP auth screens.
 
 Production note: Supabase's default email service is rate-limited
 (roughly 2 emails/hour). Configure a custom SMTP provider before launch.
@@ -1536,7 +1567,12 @@ Desktop supported but untested for the MVP.
 ## 19. Current Known Limitations / To-Fix
 - Cloud sync not implemented yet — Phase 4. Every write already
   enqueues to sync_queue, but SyncService is a no-op until then.
-- Auth screens empty — Phase 1.
+- Auth is implemented but still requires the Supabase dashboard setup
+  (Google provider + redirect allowlist) and the remote schema/RLS SQL before
+  it can be verified end-to-end on a device.
+- No password reset flow in the MVP auth screens.
+- Google sign-in must be tested on a real Android device; emulator/browser
+  deep-link behavior can differ.
 - No real keystore — Android release builds sign with the debug key
   until a production keystore is created. The self-update path depends on
   this (see section 17).

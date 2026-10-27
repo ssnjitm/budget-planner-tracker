@@ -1,4 +1,8 @@
 abstract final class RouteNames {
+  static const splash = '/';
+  static const signIn = '/auth/signin';
+  static const signUp = '/auth/signup';
+
   static const home = '/home';
 
   static const transactions = '/transactions';

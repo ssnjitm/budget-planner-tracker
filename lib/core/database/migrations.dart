@@ -201,18 +201,58 @@ const List<Migration> migrations = [
     'DROP TABLE ${Tables.accounts}',
     "DELETE FROM ${Tables.syncQueue} WHERE ${Cols.entityType} = 'account'",
   ]),
+  Migration(4, [
+    '''
+    CREATE TABLE budgets_v4 (
+      ${Cols.id} TEXT PRIMARY KEY,
+      ${Cols.categoryId} TEXT NOT NULL,
+      ${Cols.limitMinor} INTEGER NOT NULL,
+      ${Cols.createdAt} TEXT NOT NULL,
+      ${Cols.updatedAt} TEXT NOT NULL,
+      ${Cols.deletedAt} TEXT,
+      ${Cols.syncStatus} TEXT NOT NULL DEFAULT 'pending',
+      ${Cols.serverRevision} INTEGER NOT NULL DEFAULT 0
+    )
+    ''',
+    '''
+    INSERT INTO budgets_v4 (
+      ${Cols.id}, ${Cols.categoryId}, ${Cols.limitMinor}, ${Cols.createdAt},
+      ${Cols.updatedAt}, ${Cols.deletedAt}, ${Cols.syncStatus},
+      ${Cols.serverRevision}
+    )
+    SELECT
+      ${Cols.id}, ${Cols.categoryId}, ${Cols.limitMinor}, ${Cols.createdAt},
+      ${Cols.updatedAt}, ${Cols.deletedAt}, ${Cols.syncStatus},
+      ${Cols.serverRevision}
+    FROM ${Tables.budgets}
+    ''',
+    'DROP TABLE ${Tables.budgets}',
+    'ALTER TABLE budgets_v4 RENAME TO ${Tables.budgets}',
+    '''
+    CREATE UNIQUE INDEX idx_budget_category_active
+    ON ${Tables.budgets} (${Cols.categoryId})
+    WHERE ${Cols.deletedAt} IS NULL
+    ''',
+  ]),
 ];
 
 const String _seedTimestamp = '2026-01-01T00:00:00.000Z';
 
 const List<String> _seedStatements = [
-  '''
+  _accountSeedStatement,
+  ...defaultCategorySeedStatements,
+];
+
+const String _accountSeedStatement =
+    '''
   INSERT OR IGNORE INTO ${Tables.accounts}
     (${Cols.id}, ${Cols.name}, ${Cols.openingBalanceMinor}, ${Cols.isActive},
      ${Cols.createdAt}, ${Cols.updatedAt}, ${Cols.syncStatus}, ${Cols.serverRevision})
   VALUES ('11111111-1111-4111-8111-111111111111', 'Cash', 0, 1,
           '$_seedTimestamp', '$_seedTimestamp', 'synced', 0)
-  ''',
+  ''';
+
+const List<String> defaultCategorySeedStatements = [
   '''
   INSERT OR IGNORE INTO ${Tables.categories}
     (${Cols.id}, ${Cols.name}, ${Cols.type}, ${Cols.iconKey},

@@ -4,10 +4,13 @@ abstract final class AppConstants {
   static const defaultCurrency = 'NPR';
 
   static const databaseName = 'pocketbudget.db';
-  static const databaseVersion = 3;
+  static const databaseVersion = 4;
 
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
+  static bool get isSupabaseConfigured =>
+      supabaseUrl.trim().isNotEmpty && supabaseAnonKey.trim().isNotEmpty;
 
   static const supabaseSessionKey = 'pb.supabase.session';
   static const userIdKey = 'pb.user.id';

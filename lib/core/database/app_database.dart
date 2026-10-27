@@ -4,11 +4,12 @@ import 'package:sqflite/sqflite.dart';
 import '../constants/app_constants.dart';
 import '../error/exceptions.dart';
 import 'migrations.dart';
+import 'tables.dart';
 
 class AppDatabase {
   AppDatabase({DatabaseFactory? factory, String? path})
-      : _factory = factory,
-        _path = path;
+    : _factory = factory,
+      _path = path;
 
   final DatabaseFactory? _factory;
   final String? _path;
@@ -28,7 +29,8 @@ class AppDatabase {
     try {
       final factory = _factory ?? databaseFactory;
       final path =
-          _path ?? p.join(await factory.getDatabasesPath(), AppConstants.databaseName);
+          _path ??
+          p.join(await factory.getDatabasesPath(), AppConstants.databaseName);
       final db = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
@@ -50,6 +52,26 @@ class AppDatabase {
     await _db?.close();
     _db = null;
     _opening = null;
+  }
+
+  Future<void> clearUserData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final table in const [
+        Tables.goalEntries,
+        Tables.savingsGoals,
+        Tables.transactions,
+        Tables.budgets,
+        Tables.profiles,
+        Tables.categories,
+        Tables.syncQueue,
+      ]) {
+        await txn.delete(table);
+      }
+      for (final statement in defaultCategorySeedStatements) {
+        await txn.execute(statement);
+      }
+    });
   }
 }
 

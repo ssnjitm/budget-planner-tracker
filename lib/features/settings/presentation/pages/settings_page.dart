@@ -8,6 +8,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../router/route_names.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/entities/user_settings.dart';
 import '../providers/settings_providers.dart';
 
@@ -31,6 +32,10 @@ class SettingsPage extends ConsumerWidget {
         data: (value) => ListView(
           padding: const EdgeInsets.all(AppDimensions.pagePadding),
           children: [
+            const _SectionLabel('Account'),
+            const SizedBox(height: 10),
+            const _AccountCard(),
+            const SizedBox(height: AppDimensions.sectionSpacing),
             _ProfileCard(settings: value),
             const SizedBox(height: AppDimensions.sectionSpacing),
             const _SectionLabel('Organisation'),
@@ -68,6 +73,110 @@ class SettingsPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _AccountCard extends ConsumerWidget {
+  const _AccountCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    final user = auth.user;
+    final isLocal = user == null || user.isLocal;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+              child: isLocal
+                  ? const Icon(
+                      Icons.cloud_off_outlined,
+                      color: AppColors.primary,
+                    )
+                  : Text(
+                      user.initials,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isLocal ? 'Local-only account' : user.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isLocal
+                        ? 'Cloud sign-in is not configured'
+                        : (user.email ?? 'Signed in'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (auth.errorMessage != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      auth.errorMessage!,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.expense),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (!isLocal)
+              auth.isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : TextButton.icon(
+                      onPressed: () => _signOut(context, ref),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Sign out'),
+                    ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          'Your local data stays on this device. Sign back in with this '
+          'account to keep it; a different account starts with a fresh '
+          'local budget.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).signOut();
+    }
   }
 }
 

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/common/features/home/main_shell.dart';
+import '../core/common/features/home/splash_page.dart';
+import '../core/services/supabase_bootstrap.dart';
+import '../features/auth/domain/entities/auth_state.dart';
+import '../features/auth/presentation/pages/sign_in_page.dart';
+import '../features/auth/presentation/pages/sign_up_page.dart';
 import '../features/budgets/presentation/pages/add_edit_budget_page.dart';
 import '../features/budgets/presentation/pages/budgets_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
@@ -16,10 +21,42 @@ import '../features/transactions/presentation/pages/categories_page.dart';
 import '../features/transactions/presentation/pages/transactions_page.dart';
 import 'route_names.dart';
 
+class AuthGate extends ChangeNotifier {
+  AuthStatus _status = AuthStatus.unknown;
+
+  AuthStatus get status => _status;
+
+  void update(AuthStatus status) {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    notifyListeners();
+  }
+}
+
 abstract final class AppRouter {
+  static final authGate = AuthGate();
+
   static final router = GoRouter(
-    initialLocation: RouteNames.home,
+    initialLocation: SupabaseBootstrap.isReady
+        ? RouteNames.splash
+        : RouteNames.home,
+    refreshListenable: authGate,
+    redirect: _redirect,
     routes: [
+      GoRoute(
+        path: RouteNames.splash,
+        builder: (context, state) => const SplashPage(),
+      ),
+      GoRoute(
+        path: RouteNames.signIn,
+        builder: (context, state) => const SignInPage(),
+      ),
+      GoRoute(
+        path: RouteNames.signUp,
+        builder: (context, state) => const SignUpPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainShell(navigationShell: navigationShell);
@@ -129,6 +166,26 @@ abstract final class AppRouter {
       body: Center(child: Text('Page not found: ${state.uri.path}')),
     ),
   );
+
+  static String? _redirect(BuildContext context, GoRouterState state) {
+    if (!SupabaseBootstrap.isReady) {
+      return null;
+    }
+
+    final location = state.matchedLocation;
+    final isSplash = location == RouteNames.splash;
+    final isAuthPage =
+        location == RouteNames.signIn || location == RouteNames.signUp;
+
+    switch (authGate.status) {
+      case AuthStatus.unknown:
+        return isSplash || isAuthPage ? null : RouteNames.splash;
+      case AuthStatus.authenticated:
+        return isSplash || isAuthPage ? RouteNames.home : null;
+      case AuthStatus.unauthenticated:
+        return isAuthPage ? null : RouteNames.signIn;
+    }
+  }
 
   static TransactionType? _transactionTypeFromQuery(String? value) {
     if (value == null) {
