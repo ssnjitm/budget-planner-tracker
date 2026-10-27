@@ -13,7 +13,7 @@ class BudgetLocalDataSource {
     return db.query(
       Tables.budgets,
       where: '${Cols.deletedAt} IS NULL',
-      orderBy: '${Cols.periodStart} DESC, ${Cols.createdAt} DESC',
+      orderBy: '${Cols.createdAt} DESC',
     );
   }
 

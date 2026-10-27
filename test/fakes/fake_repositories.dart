@@ -6,10 +6,8 @@ import 'package:budget_planner_tracker/features/savings_goals/domain/entities/sa
 import 'package:budget_planner_tracker/features/savings_goals/domain/repositories/savings_repository.dart';
 import 'package:budget_planner_tracker/features/settings/domain/entities/user_settings.dart';
 import 'package:budget_planner_tracker/features/settings/domain/repositories/settings_repository.dart';
-import 'package:budget_planner_tracker/features/transactions/domain/entities/account.dart';
 import 'package:budget_planner_tracker/features/transactions/domain/entities/category.dart';
 import 'package:budget_planner_tracker/features/transactions/domain/entities/transaction.dart';
-import 'package:budget_planner_tracker/features/transactions/domain/repositories/account_repository.dart';
 import 'package:budget_planner_tracker/features/transactions/domain/repositories/category_repository.dart';
 import 'package:budget_planner_tracker/features/transactions/domain/repositories/transaction_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -48,28 +46,6 @@ class FakeTransactionRepository implements TransactionRepository {
 
   @override
   Stream<void> get onChange => const Stream<void>.empty();
-}
-
-class FakeAccountRepository implements AccountRepository {
-  FakeAccountRepository([this.items = const []]);
-
-  final List<Account> items;
-
-  @override
-  TaskEither<Failure, List<Account>> getAll() => TaskEither.right(items);
-
-  @override
-  TaskEither<Failure, int> balanceMinor(String accountId) =>
-      TaskEither.right(0);
-
-  @override
-  TaskEither<Failure, void> add(Account account) => _ok();
-
-  @override
-  TaskEither<Failure, void> update(Account account) => _ok();
-
-  @override
-  TaskEither<Failure, void> delete(String id) => _ok();
 }
 
 class FakeCategoryRepository implements CategoryRepository {

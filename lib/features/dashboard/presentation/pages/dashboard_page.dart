@@ -9,7 +9,6 @@ import '../../../../router/route_names.dart';
 import '../../../budgets/presentation/providers/budget_providers.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../transactions/domain/entities/category.dart';
-import '../../../transactions/presentation/providers/account_providers.dart';
 import '../../../transactions/presentation/providers/category_providers.dart';
 import '../../../transactions/presentation/widgets/transaction_tile.dart';
 import '../providers/dashboard_providers.dart';
@@ -23,11 +22,9 @@ class DashboardPage extends ConsumerWidget {
     final recent = ref.watch(recentTransactionsProvider);
     final budgetProgress = ref.watch(budgetProgressProvider);
     final categories = ref.watch(categoryProvider).items;
-    final accounts = ref.watch(accountProvider).items;
     final currency = ref.watch(currencyCodeProvider);
 
     final categoryById = {for (final Category c in categories) c.id: c};
-    final accountById = {for (final a in accounts) a.id: a.name};
 
     return Scaffold(
       appBar: AppBar(
@@ -105,6 +102,26 @@ class DashboardPage extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => context.push(RouteNames.addIncome),
+                  icon: const Icon(Icons.south_rounded),
+                  label: const Text('Add income'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => context.push(RouteNames.addExpense),
+                  icon: const Icon(Icons.north_rounded),
+                  label: const Text('Add expense'),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppDimensions.sectionSpacing),
           _SectionHeading(
             title: 'Budget usage',
@@ -116,7 +133,8 @@ class DashboardPage extends ConsumerWidget {
             const _EmptyCard(
               icon: Icons.pie_chart_outline_rounded,
               title: 'Your budgets will show here',
-              description: 'Create a monthly budget to track your spending.',
+              description:
+                  'Set a limit per expense category to track spending.',
             )
           else
             for (final progress in budgetProgress.take(3))
@@ -183,15 +201,11 @@ class DashboardPage extends ConsumerWidget {
                     Builder(
                       builder: (context) {
                         final transaction = recent[i];
-                        final category = transaction.categoryId == null
-                            ? null
-                            : categoryById[transaction.categoryId];
-                        final accountName =
-                            accountById[transaction.accountId] ?? 'Account';
+                        final category = categoryById[transaction.categoryId];
                         return TransactionTile(
                           transaction: transaction,
-                          title: category?.name ?? 'Transfer',
-                          subtitle: accountName,
+                          title: category?.name ?? 'Uncategorised',
+                          subtitle: transaction.note,
                           iconKey: category?.iconKey,
                           currency: currency,
                           onTap: () => context.push(
@@ -266,14 +280,14 @@ class _NetWorthCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'This month',
+                    'Total income',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.white70),
                   ),
                   const SizedBox(height: 7),
                   Text(
-                    Money.fromMinor(summary.netMinor, currency).format(),
+                    Money.fromMinor(summary.incomeMinor, currency).format(),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,

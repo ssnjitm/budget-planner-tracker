@@ -27,18 +27,9 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTransfer = transaction.type == TransactionType.transfer;
-    final icon = isTransfer
-        ? Icons.swap_horiz_rounded
-        : CategoryIcons.resolve(iconKey);
-    final color = switch (transaction.type) {
-      TransactionType.income => AppColors.income,
-      TransactionType.expense => AppColors.expense,
-      TransactionType.transfer => AppColors.info,
-    };
-    final signedMinor = isTransfer
-        ? transaction.amountMinor
-        : transaction.type == TransactionType.income
+    final isIncome = transaction.type == TransactionType.income;
+    final color = isIncome ? AppColors.income : AppColors.expense;
+    final signedMinor = isIncome
         ? transaction.amountMinor
         : -transaction.amountMinor;
 
@@ -56,7 +47,11 @@ class TransactionTile extends StatelessWidget {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(10),
-                child: Icon(icon, color: color, size: 21),
+                child: Icon(
+                  CategoryIcons.resolve(iconKey),
+                  color: color,
+                  size: 21,
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -85,8 +80,7 @@ class TransactionTile extends StatelessWidget {
             const SizedBox(width: 10),
             AmountText(
               money: Money.fromMinor(signedMinor, currency),
-              color: isTransfer ? AppColors.info : color,
-              showSign: !isTransfer,
+              color: color,
             ),
           ],
         ),

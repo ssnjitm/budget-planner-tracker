@@ -2,7 +2,6 @@ import 'package:budget_planner_tracker/app.dart';
 import 'package:budget_planner_tracker/features/budgets/presentation/providers/budget_providers.dart';
 import 'package:budget_planner_tracker/features/savings_goals/presentation/providers/savings_providers.dart';
 import 'package:budget_planner_tracker/features/settings/presentation/providers/settings_providers.dart';
-import 'package:budget_planner_tracker/features/transactions/presentation/providers/account_providers.dart';
 import 'package:budget_planner_tracker/features/transactions/presentation/providers/category_providers.dart';
 import 'package:budget_planner_tracker/features/transactions/presentation/providers/transaction_providers.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +17,6 @@ void main() {
         transactionRepositoryProvider.overrideWithValue(
           FakeTransactionRepository(),
         ),
-        accountRepositoryProvider.overrideWithValue(FakeAccountRepository()),
         categoryRepositoryProvider.overrideWithValue(FakeCategoryRepository()),
         budgetRepositoryProvider.overrideWithValue(FakeBudgetRepository()),
         savingsRepositoryProvider.overrideWithValue(FakeSavingsRepository()),
@@ -35,6 +33,14 @@ void main() {
     expect(find.text('Net worth'), findsOneWidget);
     expect(find.text('Income'), findsOneWidget);
     expect(find.text('Expenses'), findsOneWidget);
+    expect(find.text('Add income'), findsOneWidget);
+    expect(find.text('Add expense'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Your budgets will show here'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Your budgets will show here'), findsOneWidget);
   });
 

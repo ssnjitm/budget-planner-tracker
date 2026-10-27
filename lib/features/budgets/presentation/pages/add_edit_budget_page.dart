@@ -25,7 +25,6 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
   final _limitCtrl = TextEditingController();
 
   String? _categoryId;
-  DateTime _period = DateTime(DateTime.now().year, DateTime.now().month);
   bool _saving = false;
 
   bool get _isEditing => widget.budgetId != null;
@@ -42,8 +41,10 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
           .firstOrNull;
       if (existing != null) {
         _categoryId = existing.categoryId;
-        _period = existing.periodStart;
-        _limitCtrl.text = (existing.limitMinor / 100).toStringAsFixed(2);
+        _limitCtrl.text = formatMinor(
+          existing.limitMinor,
+          withSymbol: false,
+        ).trim();
       }
     }
   }
@@ -56,9 +57,16 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
 
   @override
   Widget build(BuildContext context) {
+    final budgets = ref.watch(budgetProvider).items;
+    final usedCategoryIds = budgets
+        .where((budget) => budget.id != widget.budgetId)
+        .map((budget) => budget.categoryId)
+        .toSet();
     final categories = ref
         .watch(categoryProvider)
-        .byType(TransactionType.expense);
+        .byType(TransactionType.expense)
+        .where((category) => !usedCategoryIds.contains(category.id))
+        .toList();
     final currency = ref.watch(currencyCodeProvider);
 
     return Scaffold(
@@ -69,9 +77,11 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
           padding: const EdgeInsets.all(AppDimensions.pagePadding),
           children: [
             DropdownButtonFormField<String>(
-              initialValue: _categoryId,
+              initialValue: categories.any((c) => c.id == _categoryId)
+                  ? _categoryId
+                  : null,
               decoration: const InputDecoration(
-                labelText: 'Category',
+                labelText: 'Expense category',
                 prefixIcon: Icon(Icons.category_outlined),
               ),
               items: [
@@ -87,19 +97,13 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
             const SizedBox(height: 16),
             MoneyTextField(
               controller: _limitCtrl,
-              label: 'Monthly limit ($currency)',
+              label: 'Budget limit ($currency)',
             ),
-            const SizedBox(height: 16),
-            InkWell(
-              onTap: _pickPeriod,
-              borderRadius: BorderRadius.circular(AppDimensions.smallRadius),
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Month',
-                  prefixIcon: Icon(Icons.calendar_month_outlined),
-                ),
-                child: Text(_monthLabel(_period)),
-              ),
+            const SizedBox(height: 12),
+            Text(
+              'Budgets are capped by your total income. Each expense '
+              'category can have only one budget.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 24),
             FilledButton(
@@ -118,20 +122,6 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
     );
   }
 
-  Future<void> _pickPeriod() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _period,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      helpText: 'Select month',
-      initialDatePickerMode: DatePickerMode.year,
-    );
-    if (picked != null) {
-      setState(() => _period = DateTime(picked.year, picked.month));
-    }
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -141,7 +131,6 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
     final budget = Budget(
       id: widget.budgetId ?? ref.read(uuidProvider).newId(),
       categoryId: _categoryId!,
-      periodStart: _period,
       limitMinor: parseMoneyToMinor(_limitCtrl.text),
       createdAt: now,
       updatedAt: now,
@@ -163,23 +152,5 @@ class _AddEditBudgetPageState extends ConsumerState<AddEditBudgetPage> {
         SnackBar(content: Text(ref.read(budgetProvider).message ?? 'Failed')),
       );
     }
-  }
-
-  String _monthLabel(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
   }
 }

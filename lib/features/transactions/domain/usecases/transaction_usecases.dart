@@ -2,7 +2,6 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/failures.dart';
 import '../entities/transaction.dart';
-import '../entities/transaction_type.dart';
 import '../repositories/transaction_repository.dart';
 
 class GetTransactions {
@@ -62,14 +61,7 @@ ValidationFailure? _validate(Transaction transaction) {
   if (transaction.amountMinor <= 0) {
     return const ValidationFailure('Amount must be positive');
   }
-  if (transaction.type == TransactionType.transfer) {
-    if (transaction.toAccountId == null) {
-      return const ValidationFailure('Transfer needs a destination account');
-    }
-    if (transaction.toAccountId == transaction.accountId) {
-      return const ValidationFailure('Cannot transfer to the same account');
-    }
-  } else if (transaction.categoryId == null) {
+  if (transaction.categoryId.trim().isEmpty) {
     return const ValidationFailure('Pick a category');
   }
   return null;

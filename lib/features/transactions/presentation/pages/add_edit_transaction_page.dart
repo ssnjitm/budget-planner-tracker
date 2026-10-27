@@ -7,17 +7,20 @@ import '../../../../core/money/money_formatter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
-import '../../domain/entities/category.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/entities/transaction_type.dart';
-import '../providers/account_providers.dart';
 import '../providers/category_providers.dart';
 import '../providers/transaction_providers.dart';
 
 class AddEditTransactionPage extends ConsumerStatefulWidget {
-  const AddEditTransactionPage({this.transactionId, super.key});
+  const AddEditTransactionPage({
+    this.transactionId,
+    this.initialType,
+    super.key,
+  });
 
   final String? transactionId;
+  final TransactionType? initialType;
 
   @override
   ConsumerState<AddEditTransactionPage> createState() =>
@@ -32,9 +35,7 @@ class _AddEditTransactionPageState
 
   TransactionType _type = TransactionType.expense;
   DateTime _date = DateUtils.dateOnly(DateTime.now());
-  String? _accountId;
   String? _categoryId;
-  String? _toAccountId;
   bool _saving = false;
 
   bool get _isEditing => widget.transactionId != null;
@@ -52,14 +53,16 @@ class _AddEditTransactionPageState
       if (existing != null) {
         _type = existing.type;
         _date = existing.transactionDate;
-        _accountId = existing.accountId;
         _categoryId = existing.categoryId;
-        _toAccountId = existing.toAccountId;
         _noteCtrl.text = existing.note ?? '';
-        _amountCtrl.text = (existing.amountMinor / 100).toStringAsFixed(2);
+        _amountCtrl.text = formatMinor(
+          existing.amountMinor,
+          withSymbol: false,
+        ).trim();
       }
+    } else if (widget.initialType != null) {
+      _type = widget.initialType!;
     }
-    _accountId ??= ref.read(accountProvider).items.firstOrNull?.id;
   }
 
   @override
@@ -71,13 +74,9 @@ class _AddEditTransactionPageState
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountProvider).items;
     final categoryState = ref.watch(categoryProvider);
     final currency = ref.watch(currencyCodeProvider);
-
-    final categories = _type == TransactionType.transfer
-        ? <Category>[]
-        : categoryState.byType(_type);
+    final categories = categoryState.byType(_type);
 
     return Scaffold(
       appBar: AppBar(
@@ -98,16 +97,11 @@ class _AddEditTransactionPageState
                   value: TransactionType.income,
                   label: Text('Income'),
                 ),
-                ButtonSegment(
-                  value: TransactionType.transfer,
-                  label: Text('Transfer'),
-                ),
               ],
               selected: {_type},
               onSelectionChanged: (selection) => setState(() {
                 _type = selection.first;
                 _categoryId = null;
-                _toAccountId = null;
               }),
             ),
             const SizedBox(height: 18),
@@ -118,57 +112,21 @@ class _AddEditTransactionPageState
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              initialValue: _accountId,
+              initialValue: _categoryId,
               decoration: const InputDecoration(
-                labelText: 'Account',
-                prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                labelText: 'Category',
+                prefixIcon: Icon(Icons.category_outlined),
               ),
               items: [
-                for (final account in accounts)
+                for (final category in categories)
                   DropdownMenuItem(
-                    value: account.id,
-                    child: Text(account.name),
+                    value: category.id,
+                    child: Text(category.name),
                   ),
               ],
-              onChanged: (value) => setState(() => _accountId = value),
-              validator: (value) => value == null ? 'Pick an account' : null,
+              onChanged: (value) => setState(() => _categoryId = value),
+              validator: (value) => value == null ? 'Pick a category' : null,
             ),
-            const SizedBox(height: 16),
-            if (_type == TransactionType.transfer)
-              DropdownButtonFormField<String>(
-                initialValue: _toAccountId,
-                decoration: const InputDecoration(
-                  labelText: 'To account',
-                  prefixIcon: Icon(Icons.swap_horiz_rounded),
-                ),
-                items: [
-                  for (final account in accounts)
-                    DropdownMenuItem(
-                      value: account.id,
-                      child: Text(account.name),
-                    ),
-                ],
-                onChanged: (value) => setState(() => _toAccountId = value),
-                validator: (value) =>
-                    value == null ? 'Pick a destination account' : null,
-              )
-            else
-              DropdownButtonFormField<String>(
-                initialValue: _categoryId,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  prefixIcon: Icon(Icons.category_outlined),
-                ),
-                items: [
-                  for (final category in categories)
-                    DropdownMenuItem(
-                      value: category.id,
-                      child: Text(category.name),
-                    ),
-                ],
-                onChanged: (value) => setState(() => _categoryId = value),
-                validator: (value) => value == null ? 'Pick a category' : null,
-              ),
             const SizedBox(height: 16),
             InkWell(
               onTap: _pickDate,
@@ -228,9 +186,7 @@ class _AddEditTransactionPageState
     final amountMinor = parseMoneyToMinor(_amountCtrl.text);
     final transaction = Transaction(
       id: widget.transactionId ?? ref.read(uuidProvider).newId(),
-      accountId: _accountId!,
-      toAccountId: _type == TransactionType.transfer ? _toAccountId : null,
-      categoryId: _type == TransactionType.transfer ? null : _categoryId,
+      categoryId: _categoryId!,
       type: _type,
       amountMinor: amountMinor,
       transactionDate: _date,

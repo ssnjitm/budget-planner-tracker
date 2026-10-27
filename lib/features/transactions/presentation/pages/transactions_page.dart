@@ -12,8 +12,6 @@ import '../../../../router/route_names.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/transaction.dart';
-import '../../domain/entities/transaction_type.dart';
-import '../providers/account_providers.dart';
 import '../providers/category_providers.dart';
 import '../providers/transaction_providers.dart';
 import '../widgets/transaction_tile.dart';
@@ -25,11 +23,8 @@ class TransactionsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(transactionProvider);
     final categories = ref.watch(categoryProvider).items;
-    final accounts = ref.watch(accountProvider).items;
     final currency = ref.watch(currencyCodeProvider);
-
     final categoryById = {for (final c in categories) c.id: c};
-    final accountById = {for (final a in accounts) a.id: a.name};
 
     return Scaffold(
       appBar: AppBar(title: const Text('Transactions')),
@@ -64,7 +59,6 @@ class TransactionsPage extends ConsumerWidget {
                 child: _TransactionList(
                   items: state.visibleItems,
                   categoryById: categoryById,
-                  accountById: accountById,
                   currency: currency,
                   onEdit: (transaction) =>
                       context.push(RouteNames.editTransaction(transaction.id)),
@@ -132,7 +126,6 @@ class _FilterBar extends StatelessWidget {
     TransactionFilter.all => 'All',
     TransactionFilter.income => 'Income',
     TransactionFilter.expense => 'Expense',
-    TransactionFilter.transfer => 'Transfer',
   };
 }
 
@@ -140,7 +133,6 @@ class _TransactionList extends StatelessWidget {
   const _TransactionList({
     required this.items,
     required this.categoryById,
-    required this.accountById,
     required this.currency,
     required this.onEdit,
     required this.onDelete,
@@ -148,7 +140,6 @@ class _TransactionList extends StatelessWidget {
 
   final List<Transaction> items;
   final Map<String, Category> categoryById;
-  final Map<String, String> accountById;
   final String currency;
   final ValueChanged<Transaction> onEdit;
   final ValueChanged<Transaction> onDelete;
@@ -165,19 +156,8 @@ class _TransactionList extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final transaction = items[index];
-        final category = transaction.categoryId == null
-            ? null
-            : categoryById[transaction.categoryId];
-        final accountName = accountById[transaction.accountId] ?? 'Account';
-        final toAccountName = transaction.toAccountId == null
-            ? null
-            : accountById[transaction.toAccountId];
-        final title = transaction.type == TransactionType.transfer
-            ? 'Transfer'
-            : category?.name ?? 'Uncategorised';
-        final subtitle = transaction.type == TransactionType.transfer
-            ? '$accountName → ${toAccountName ?? 'Account'}'
-            : '$accountName · ${_formatDate(transaction.transactionDate)}';
+        final category = categoryById[transaction.categoryId];
+        final date = _formatDate(transaction.transactionDate);
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -202,10 +182,10 @@ class _TransactionList extends StatelessWidget {
             child: Card(
               child: TransactionTile(
                 transaction: transaction,
-                title: title,
+                title: category?.name ?? 'Uncategorised',
                 subtitle: transaction.note?.isNotEmpty == true
-                    ? '$subtitle · ${transaction.note}'
-                    : subtitle,
+                    ? '$date · ${transaction.note}'
+                    : date,
                 iconKey: category?.iconKey,
                 currency: currency,
                 onTap: () => onEdit(transaction),

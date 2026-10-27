@@ -3,6 +3,8 @@ abstract final class RouteNames {
 
   static const transactions = '/transactions';
   static const addTransaction = '/transactions/add';
+  static const addIncome = '/transactions/add?type=income';
+  static const addExpense = '/transactions/add?type=expense';
 
   static const budgets = '/budgets';
   static const addBudget = '/budgets/add';
@@ -13,7 +15,6 @@ abstract final class RouteNames {
   static const reports = '/reports';
 
   static const settings = '/settings';
-  static const accounts = '/settings/accounts';
   static const categories = '/settings/categories';
 
   static String editTransaction(String id) => '/transactions/$id/edit';

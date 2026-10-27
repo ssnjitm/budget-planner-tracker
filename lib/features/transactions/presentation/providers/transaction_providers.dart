@@ -1,13 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/common/providers/core_providers.dart';
+import '../../../../core/error/failures.dart';
 import '../../data/datasources/transaction_local_datasource.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/entities/transaction.dart';
+import '../../domain/entities/transaction_type.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../../domain/usecases/transaction_usecases.dart';
-import 'account_providers.dart';
 
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   return TransactionRepositoryImpl(
@@ -38,7 +40,7 @@ final deleteTransactionProvider = Provider<DeleteTransaction>(
 
 enum TransactionStatus { initial, loading, success, error }
 
-enum TransactionFilter { all, income, expense, transfer }
+enum TransactionFilter { all, income, expense }
 
 class TransactionState {
   const TransactionState({
@@ -58,11 +60,9 @@ class TransactionState {
       case TransactionFilter.all:
         return items;
       case TransactionFilter.income:
-        return items.where((t) => t.type.name == 'income').toList();
+        return items.where((t) => t.type == TransactionType.income).toList();
       case TransactionFilter.expense:
-        return items.where((t) => t.type.name == 'expense').toList();
-      case TransactionFilter.transfer:
-        return items.where((t) => t.type.name == 'transfer').toList();
+        return items.where((t) => t.type == TransactionType.expense).toList();
     }
   }
 
@@ -116,11 +116,20 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
     state = state.copyWith(filter: filter);
   }
 
-  Future<bool> add(Transaction transaction) async {
-    final result = await _ref
-        .read(addTransactionProvider)
-        .call(transaction)
-        .run();
+  Future<bool> add(Transaction transaction) {
+    return _runMutation(_ref.read(addTransactionProvider).call(transaction));
+  }
+
+  Future<bool> update(Transaction transaction) {
+    return _runMutation(_ref.read(updateTransactionProvider).call(transaction));
+  }
+
+  Future<bool> delete(String id) {
+    return _runMutation(_ref.read(deleteTransactionProvider).call(id));
+  }
+
+  Future<bool> _runMutation(TaskEither<Failure, void> operation) async {
+    final result = await operation.run();
     return result.fold(
       (failure) {
         state = state.copyWith(
@@ -130,53 +139,9 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         return false;
       },
       (_) {
-        _refreshSiblings();
         load();
         return true;
       },
     );
-  }
-
-  Future<bool> update(Transaction transaction) async {
-    final result = await _ref
-        .read(updateTransactionProvider)
-        .call(transaction)
-        .run();
-    return result.fold(
-      (failure) {
-        state = state.copyWith(
-          status: TransactionStatus.error,
-          message: failure.message,
-        );
-        return false;
-      },
-      (_) {
-        _refreshSiblings();
-        load();
-        return true;
-      },
-    );
-  }
-
-  Future<bool> delete(String id) async {
-    final result = await _ref.read(deleteTransactionProvider).call(id).run();
-    return result.fold(
-      (failure) {
-        state = state.copyWith(
-          status: TransactionStatus.error,
-          message: failure.message,
-        );
-        return false;
-      },
-      (_) {
-        _refreshSiblings();
-        load();
-        return true;
-      },
-    );
-  }
-
-  void _refreshSiblings() {
-    _ref.read(accountProvider.notifier).refreshBalances();
   }
 }

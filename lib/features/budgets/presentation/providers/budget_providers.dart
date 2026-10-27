@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../../core/common/providers/core_providers.dart';
+import '../../../../core/money/money_formatter.dart';
 import '../../../transactions/domain/entities/category.dart';
 import '../../../transactions/domain/entities/transaction_type.dart';
 import '../../../transactions/presentation/providers/category_providers.dart';
@@ -89,6 +90,17 @@ class BudgetNotifier extends StateNotifier<BudgetState> {
   }
 
   Future<bool> add(Budget budget) async {
+    if (_hasBudgetFor(budget.categoryId)) {
+      state = state.copyWith(
+        message: 'A budget already exists for this category.',
+      );
+      return false;
+    }
+    final capError = await _capError(budget.limitMinor);
+    if (capError != null) {
+      state = state.copyWith(message: capError);
+      return false;
+    }
     final result = await _ref.read(addBudgetProvider).call(budget).run();
     return result.fold(
       (failure) {
@@ -103,6 +115,17 @@ class BudgetNotifier extends StateNotifier<BudgetState> {
   }
 
   Future<bool> update(Budget budget) async {
+    if (_hasBudgetFor(budget.categoryId, excludeId: budget.id)) {
+      state = state.copyWith(
+        message: 'A budget already exists for this category.',
+      );
+      return false;
+    }
+    final capError = await _capError(budget.limitMinor, excludeId: budget.id);
+    if (capError != null) {
+      state = state.copyWith(message: capError);
+      return false;
+    }
     final result = await _ref.read(updateBudgetProvider).call(budget).run();
     return result.fold(
       (failure) {
@@ -129,7 +152,46 @@ class BudgetNotifier extends StateNotifier<BudgetState> {
       },
     );
   }
+
+  bool _hasBudgetFor(String categoryId, {String? excludeId}) {
+    return state.items.any(
+      (budget) => budget.categoryId == categoryId && budget.id != excludeId,
+    );
+  }
+
+  Future<String?> _capError(int limitMinor, {String? excludeId}) async {
+    final income = await _totalIncomeMinor();
+    if (income == null) {
+      return null;
+    }
+    final allocated = state.items
+        .where((budget) => budget.id != excludeId)
+        .fold(0, (sum, budget) => sum + budget.limitMinor);
+    if (allocated + limitMinor <= income) {
+      return null;
+    }
+    if (income <= 0) {
+      return 'Add income before creating a budget.';
+    }
+    return 'Total budgets cannot exceed total income '
+        '(${formatMinor(income, withSymbol: false).trim()}).';
+  }
+
+  Future<int?> _totalIncomeMinor() async {
+    final result = await _ref.read(getTransactionsProvider).call().run();
+    return result.fold(
+      (_) => null,
+      (items) => items
+          .where((transaction) => transaction.type == TransactionType.income)
+          .fold<int>(0, (sum, transaction) => sum + transaction.amountMinor),
+    );
+  }
 }
+
+final totalBudgetedMinorProvider = Provider<int>((ref) {
+  final budgets = ref.watch(budgetProvider).items;
+  return budgets.fold(0, (sum, budget) => sum + budget.limitMinor);
+});
 
 class BudgetProgress {
   const BudgetProgress({
@@ -165,9 +227,7 @@ final budgetProgressProvider = Provider<List<BudgetProgress>>((ref) {
         .where(
           (transaction) =>
               transaction.type == TransactionType.expense &&
-              transaction.categoryId == budget.categoryId &&
-              transaction.transactionDate.year == budget.periodStart.year &&
-              transaction.transactionDate.month == budget.periodStart.month,
+              transaction.categoryId == budget.categoryId,
         )
         .fold(0, (sum, transaction) => sum + transaction.amountMinor);
     return BudgetProgress(

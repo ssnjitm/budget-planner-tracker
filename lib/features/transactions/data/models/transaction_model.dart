@@ -8,23 +8,19 @@ import '../../domain/entities/transaction_type.dart';
 class TransactionModel extends Equatable {
   const TransactionModel({
     required this.id,
-    required this.accountId,
+    required this.categoryId,
     required this.type,
     required this.amountMinor,
     required this.transactionDate,
     required this.createdAt,
     required this.updatedAt,
-    this.toAccountId,
-    this.categoryId,
     this.note,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) =>
       TransactionModel(
         id: json[Cols.id] as String? ?? '',
-        accountId: json[Cols.accountId] as String? ?? '',
-        toAccountId: json[Cols.toAccountId] as String?,
-        categoryId: json[Cols.categoryId] as String?,
+        categoryId: json[Cols.categoryId] as String? ?? '',
         type: json[Cols.type] as String? ?? 'expense',
         amountMinor: (json[Cols.amountMinor] as num?)?.toInt() ?? 0,
         transactionDate:
@@ -41,8 +37,6 @@ class TransactionModel extends Equatable {
 
   factory TransactionModel.fromEntity(Transaction entity) => TransactionModel(
     id: entity.id,
-    accountId: entity.accountId,
-    toAccountId: entity.toAccountId,
     categoryId: entity.categoryId,
     type: entity.type.name,
     amountMinor: entity.amountMinor,
@@ -53,9 +47,7 @@ class TransactionModel extends Equatable {
   );
 
   final String id;
-  final String accountId;
-  final String? toAccountId;
-  final String? categoryId;
+  final String categoryId;
   final String type;
   final int amountMinor;
   final DateTime transactionDate;
@@ -65,8 +57,6 @@ class TransactionModel extends Equatable {
 
   Map<String, dynamic> toJson() => {
     Cols.id: id,
-    Cols.accountId: accountId,
-    Cols.toAccountId: toAccountId,
     Cols.categoryId: categoryId,
     Cols.type: type,
     Cols.amountMinor: amountMinor,
@@ -78,8 +68,6 @@ class TransactionModel extends Equatable {
 
   Transaction toEntity() => Transaction(
     id: id,
-    accountId: accountId,
-    toAccountId: toAccountId,
     categoryId: categoryId,
     type: TransactionType.values.firstWhere(
       (value) => value.name == type,
@@ -95,8 +83,6 @@ class TransactionModel extends Equatable {
   @override
   List<Object?> get props => [
     id,
-    accountId,
-    toAccountId,
     categoryId,
     type,
     amountMinor,

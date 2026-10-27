@@ -13,6 +13,9 @@ abstract final class CategoryIcons {
     'business': Icons.work_rounded,
     'gifts': Icons.card_giftcard_rounded,
     'other_income': Icons.savings_rounded,
+    'teaching': Icons.school_rounded,
+    'freelance': Icons.laptop_mac_rounded,
+    'investment': Icons.trending_up_rounded,
   };
 
   static IconData resolve(String? key) => _icons[key] ?? Icons.category_rounded;

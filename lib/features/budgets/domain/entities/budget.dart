@@ -4,7 +4,6 @@ class Budget extends Equatable {
   const Budget({
     required this.id,
     required this.categoryId,
-    required this.periodStart,
     required this.limitMinor,
     required this.createdAt,
     required this.updatedAt,
@@ -12,18 +11,10 @@ class Budget extends Equatable {
 
   final String id;
   final String categoryId;
-  final DateTime periodStart;
   final int limitMinor;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   @override
-  List<Object?> get props => [
-    id,
-    categoryId,
-    periodStart,
-    limitMinor,
-    createdAt,
-    updatedAt,
-  ];
+  List<Object?> get props => [id, categoryId, limitMinor, createdAt, updatedAt];
 }

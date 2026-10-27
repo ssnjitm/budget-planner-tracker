@@ -138,7 +138,7 @@ final categoryBreakdownProvider = Provider<List<CategorySlice>>((ref) {
         transaction.transactionDate.month != month.month) {
       continue;
     }
-    final key = transaction.categoryId ?? 'uncategorised';
+    final key = transaction.categoryId;
     totals[key] = (totals[key] ?? 0) + transaction.amountMinor;
   }
 

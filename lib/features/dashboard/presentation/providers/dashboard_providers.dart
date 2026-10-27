@@ -5,7 +5,6 @@ import '../../../budgets/presentation/providers/budget_providers.dart';
 import '../../../savings_goals/presentation/providers/savings_providers.dart';
 import '../../../transactions/domain/entities/transaction.dart';
 import '../../../transactions/domain/entities/transaction_type.dart';
-import '../../../transactions/presentation/providers/account_providers.dart';
 import '../../../transactions/presentation/providers/transaction_providers.dart';
 
 class DashboardSummary {
@@ -16,6 +15,7 @@ class DashboardSummary {
     this.budgetLimitMinor = 0,
     this.budgetSpentMinor = 0,
     this.savedMinor = 0,
+    this.monthExpenseMinor = 0,
   });
 
   final int incomeMinor;
@@ -24,6 +24,7 @@ class DashboardSummary {
   final int budgetLimitMinor;
   final int budgetSpentMinor;
   final int savedMinor;
+  final int monthExpenseMinor;
 
   int get netMinor => incomeMinor - expenseMinor;
 
@@ -34,43 +35,38 @@ class DashboardSummary {
       : (budgetSpentMinor / budgetLimitMinor).clamp(0, 1).toDouble();
 
   int get dailyAverageMinor {
-    final today = DateTime.now();
-    final daysElapsed = today.day;
+    final daysElapsed = DateTime.now().day;
     if (daysElapsed <= 0) {
       return 0;
     }
-    return expenseMinor ~/ daysElapsed;
+    return monthExpenseMinor ~/ daysElapsed;
   }
 }
 
 final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   final now = ref.watch(clockProvider)();
   final transactions = ref.watch(transactionProvider).items;
-  final netWorth = ref.watch(accountProvider).totalBalanceMinor;
   final budgetProgress = ref.watch(budgetProgressProvider);
   final saved = ref.watch(totalSavedProvider);
 
   var income = 0;
   var expense = 0;
+  var monthExpense = 0;
   for (final transaction in transactions) {
-    if (transaction.transactionDate.year != now.year ||
-        transaction.transactionDate.month != now.month) {
-      continue;
-    }
     if (transaction.type == TransactionType.income) {
       income += transaction.amountMinor;
-    } else if (transaction.type == TransactionType.expense) {
-      expense += transaction.amountMinor;
+      continue;
+    }
+    expense += transaction.amountMinor;
+    if (transaction.transactionDate.year == now.year &&
+        transaction.transactionDate.month == now.month) {
+      monthExpense += transaction.amountMinor;
     }
   }
 
   var budgetLimit = 0;
   var budgetSpent = 0;
   for (final progress in budgetProgress) {
-    if (progress.budget.periodStart.year != now.year ||
-        progress.budget.periodStart.month != now.month) {
-      continue;
-    }
     budgetLimit += progress.limitMinor;
     budgetSpent += progress.spentMinor;
   }
@@ -78,10 +74,11 @@ final dashboardSummaryProvider = Provider<DashboardSummary>((ref) {
   return DashboardSummary(
     incomeMinor: income,
     expenseMinor: expense,
-    netWorthMinor: netWorth,
+    netWorthMinor: income - expense,
     budgetLimitMinor: budgetLimit,
     budgetSpentMinor: budgetSpent,
     savedMinor: saved,
+    monthExpenseMinor: monthExpense,
   );
 });
 

@@ -11,6 +11,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../router/route_names.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
+import '../../../transactions/domain/entities/transaction_type.dart';
+import '../../../transactions/presentation/providers/transaction_providers.dart';
 import '../providers/budget_providers.dart';
 
 class BudgetsPage extends ConsumerWidget {
@@ -20,6 +22,12 @@ class BudgetsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(budgetProvider);
     final progress = ref.watch(budgetProgressProvider);
+    final budgetedMinor = ref.watch(totalBudgetedMinorProvider);
+    final incomeMinor = ref
+        .watch(transactionProvider)
+        .items
+        .where((transaction) => transaction.type == TransactionType.income)
+        .fold(0, (sum, transaction) => sum + transaction.amountMinor);
     final currency = ref.watch(currencyCodeProvider);
 
     return Scaffold(
@@ -39,7 +47,9 @@ class BudgetsPage extends ConsumerWidget {
         _ when state.items.isEmpty => const AppEmptyState(
           icon: Icons.savings_outlined,
           title: 'No budgets yet',
-          subtitle: 'Set a monthly limit per category to track spending.',
+          subtitle:
+              'Set one limit per expense category. Total budgets stay '
+              'within your total income.',
         ),
         _ => ListView.separated(
           padding: const EdgeInsets.fromLTRB(
@@ -48,10 +58,17 @@ class BudgetsPage extends ConsumerWidget {
             AppDimensions.pagePadding,
             96,
           ),
-          itemCount: progress.length,
+          itemCount: progress.length + 1,
           separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final item = progress[index];
+            if (index == 0) {
+              return _BudgetSummary(
+                budgetedMinor: budgetedMinor,
+                incomeMinor: incomeMinor,
+                currency: currency,
+              );
+            }
+            final item = progress[index - 1];
             final isOver = item.remainingMinor < 0;
             final color = isOver ? AppColors.expense : AppColors.primary;
             return Dismissible(
@@ -86,23 +103,9 @@ class BudgetsPage extends ConsumerWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.categoryName,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    _monthLabel(item.budget.periodStart),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
+                              child: Text(
+                                item.categoryName,
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
                             ),
                             Text(
@@ -151,23 +154,53 @@ class BudgetsPage extends ConsumerWidget {
       },
     );
   }
+}
 
-  String _monthLabel(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
+class _BudgetSummary extends StatelessWidget {
+  const _BudgetSummary({
+    required this.budgetedMinor,
+    required this.incomeMinor,
+    required this.currency,
+  });
+
+  final int budgetedMinor;
+  final int incomeMinor;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = incomeMinor <= 0
+        ? 0.0
+        : (budgetedMinor / incomeMinor).clamp(0, 1).toDouble();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Budgeted of income',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${Money.fromMinor(budgetedMinor, currency).format()} of '
+              '${Money.fromMinor(incomeMinor, currency).format()}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 8,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

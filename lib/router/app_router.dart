@@ -10,7 +10,7 @@ import '../features/savings_goals/presentation/pages/add_edit_goal_page.dart';
 import '../features/savings_goals/presentation/pages/goal_detail_page.dart';
 import '../features/savings_goals/presentation/pages/savings_goals_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
-import '../features/transactions/presentation/pages/accounts_page.dart';
+import '../features/transactions/domain/entities/transaction_type.dart';
 import '../features/transactions/presentation/pages/add_edit_transaction_page.dart';
 import '../features/transactions/presentation/pages/categories_page.dart';
 import '../features/transactions/presentation/pages/transactions_page.dart';
@@ -41,7 +41,11 @@ abstract final class AppRouter {
                 routes: [
                   GoRoute(
                     path: 'add',
-                    builder: (context, state) => const AddEditTransactionPage(),
+                    builder: (context, state) => AddEditTransactionPage(
+                      initialType: _transactionTypeFromQuery(
+                        state.uri.queryParameters['type'],
+                      ),
+                    ),
                   ),
                   GoRoute(
                     path: ':id/edit',
@@ -114,10 +118,6 @@ abstract final class AppRouter {
         builder: (context, state) => const SettingsPage(),
         routes: [
           GoRoute(
-            path: 'accounts',
-            builder: (context, state) => const AccountsPage(),
-          ),
-          GoRoute(
             path: 'categories',
             builder: (context, state) => const CategoriesPage(),
           ),
@@ -129,4 +129,16 @@ abstract final class AppRouter {
       body: Center(child: Text('Page not found: ${state.uri.path}')),
     ),
   );
+
+  static TransactionType? _transactionTypeFromQuery(String? value) {
+    if (value == null) {
+      return null;
+    }
+    for (final type in TransactionType.values) {
+      if (type.name == value) {
+        return type;
+      }
+    }
+    return null;
+  }
 }

@@ -121,6 +121,86 @@ const List<Migration> migrations = [
     'CREATE INDEX idx_sync_due ON ${Tables.syncQueue} (${Cols.nextAttemptAt})',
     ..._seedStatements,
   ]),
+  Migration(2, _seedStatements),
+  Migration(3, [
+    '''
+    CREATE TABLE transactions_v3 (
+      ${Cols.id} TEXT PRIMARY KEY,
+      ${Cols.categoryId} TEXT NOT NULL,
+      ${Cols.type} TEXT NOT NULL,
+      ${Cols.amountMinor} INTEGER NOT NULL,
+      ${Cols.transactionDate} TEXT NOT NULL,
+      ${Cols.note} TEXT,
+      ${Cols.createdAt} TEXT NOT NULL,
+      ${Cols.updatedAt} TEXT NOT NULL,
+      ${Cols.deletedAt} TEXT,
+      ${Cols.syncStatus} TEXT NOT NULL DEFAULT 'pending',
+      ${Cols.serverRevision} INTEGER NOT NULL DEFAULT 0
+    )
+    ''',
+    '''
+    INSERT INTO transactions_v3 (
+      ${Cols.id}, ${Cols.categoryId}, ${Cols.type}, ${Cols.amountMinor},
+      ${Cols.transactionDate}, ${Cols.note}, ${Cols.createdAt},
+      ${Cols.updatedAt}, ${Cols.deletedAt}, ${Cols.syncStatus},
+      ${Cols.serverRevision}
+    )
+    SELECT
+      ${Cols.id},
+      CASE
+        WHEN ${Cols.categoryId} IS NULL OR ${Cols.categoryId} = '' THEN
+          CASE WHEN ${Cols.type} = 'income'
+            THEN '33333333-3333-4333-8333-000000000004'
+            ELSE '22222222-2222-4222-8222-000000000007'
+          END
+        ELSE ${Cols.categoryId}
+      END,
+      ${Cols.type}, ${Cols.amountMinor}, ${Cols.transactionDate},
+      ${Cols.note}, ${Cols.createdAt}, ${Cols.updatedAt}, ${Cols.deletedAt},
+      ${Cols.syncStatus}, ${Cols.serverRevision}
+    FROM ${Tables.transactions}
+    WHERE ${Cols.type} IN ('income', 'expense')
+    ''',
+    'DROP TABLE ${Tables.transactions}',
+    'ALTER TABLE transactions_v3 RENAME TO ${Tables.transactions}',
+    'CREATE INDEX idx_tx_date ON ${Tables.transactions} (${Cols.transactionDate})',
+    'CREATE INDEX idx_tx_category ON ${Tables.transactions} (${Cols.categoryId})',
+    '''
+    CREATE TABLE budgets_v3 (
+      ${Cols.id} TEXT PRIMARY KEY,
+      ${Cols.categoryId} TEXT NOT NULL UNIQUE,
+      ${Cols.limitMinor} INTEGER NOT NULL,
+      ${Cols.createdAt} TEXT NOT NULL,
+      ${Cols.updatedAt} TEXT NOT NULL,
+      ${Cols.deletedAt} TEXT,
+      ${Cols.syncStatus} TEXT NOT NULL DEFAULT 'pending',
+      ${Cols.serverRevision} INTEGER NOT NULL DEFAULT 0
+    )
+    ''',
+    '''
+    INSERT OR IGNORE INTO budgets_v3 (
+      ${Cols.id}, ${Cols.categoryId}, ${Cols.limitMinor}, ${Cols.createdAt},
+      ${Cols.updatedAt}, ${Cols.deletedAt}, ${Cols.syncStatus},
+      ${Cols.serverRevision}
+    )
+    SELECT
+      b.${Cols.id}, b.${Cols.categoryId}, b.${Cols.limitMinor},
+      b.${Cols.createdAt}, b.${Cols.updatedAt}, b.${Cols.deletedAt},
+      b.${Cols.syncStatus}, b.${Cols.serverRevision}
+    FROM ${Tables.budgets} b
+    WHERE b.${Cols.deletedAt} IS NULL
+      AND b.${Cols.updatedAt} = (
+        SELECT MAX(b2.${Cols.updatedAt})
+        FROM ${Tables.budgets} b2
+        WHERE b2.${Cols.categoryId} = b.${Cols.categoryId}
+          AND b2.${Cols.deletedAt} IS NULL
+      )
+    ''',
+    'DROP TABLE ${Tables.budgets}',
+    'ALTER TABLE budgets_v3 RENAME TO ${Tables.budgets}',
+    'DROP TABLE ${Tables.accounts}',
+    "DELETE FROM ${Tables.syncQueue} WHERE ${Cols.entityType} = 'account'",
+  ]),
 ];
 
 const String _seedTimestamp = '2026-01-01T00:00:00.000Z';
@@ -159,6 +239,12 @@ const List<String> _seedStatements = [
     ('33333333-3333-4333-8333-000000000003', 'Gifts', 'income', 'gifts',
      '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
     ('33333333-3333-4333-8333-000000000004', 'Other income', 'income', 'other_income',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000005', 'Teaching', 'income', 'teaching',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000006', 'Freelance', 'income', 'freelance',
+     '$_seedTimestamp', '$_seedTimestamp', 'synced', 0),
+    ('33333333-3333-4333-8333-000000000007', 'Investment', 'income', 'investment',
      '$_seedTimestamp', '$_seedTimestamp', 'synced', 0)
   ''',
 ];

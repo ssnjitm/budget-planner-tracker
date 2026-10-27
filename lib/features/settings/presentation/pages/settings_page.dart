@@ -36,12 +36,6 @@ class SettingsPage extends ConsumerWidget {
             const _SectionLabel('Organisation'),
             const SizedBox(height: 10),
             _SettingsTile(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Accounts',
-              subtitle: 'Manage your wallets and balances',
-              onTap: () => context.push(RouteNames.accounts),
-            ),
-            _SettingsTile(
               icon: Icons.category_outlined,
               title: 'Categories',
               subtitle: 'Customise income and expense categories',
